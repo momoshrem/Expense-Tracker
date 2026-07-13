@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Expense Tracker</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for the visual breakdown -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #040d14; }
+        .robinhood-green { color: #00c805; }
+        .robinhood-bg-green { background-color: #00c805; }
+        .robinhood-bg-green:hover { background-color: #00b004; }
+        .card-dark { background-color: #0e1e24; border: 1px solid #1e323a; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen font-sans antialiased pb-16">
+
+    <!-- DASHBOARD HEADER -->
+    <header class="border-b border-gray-800 bg-[#040d14] sticky top-0 z-50 backdrop-blur-md bg-opacity-80">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-sm font-semibold tracking-wider text-gray-400 uppercase">Monthly Expenses</h1>
+                <div class="text-4xl font-bold tracking-tight mt-1">$<span id="total-amount">0.00</span></div>
+            </div>
+            
+            <!-- Cloud Sync Control Panel -->
+            <div class="flex flex-col items-end gap-1 w-full sm:w-auto">
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <input type="text" id="sync-key-input" placeholder="Paste Sync Key to Link Device" class="bg-[#172a32] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00c805] w-48 font-mono">
+                    <button id="connect-btn" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700">Link</button>
+                </div>
+                <button id="show-key-btn" class="text-[10px] text-gray-500 hover:text-gray-300 underline tracking-wide">
+                    Reveal My Device Cloud Sync Key
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <main class="max-w-4xl mx-auto px-4 mt-8 space-y-8">
+        
+        <!-- Top Row: Input and Visual Chart -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-6">
+                <!-- Log Expense Form -->
+                <section class="card-dark p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-lg font-bold mb-4 text-white">Log Expense</h2>
+                    <form id="expense-form" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Description / Item</label>
+                            <input type="text" id="expense-desc" required placeholder="e.g., Electric bill, Rent, Groceries" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Amount ($)</label>
+                            <input type="number" id="expense-amount" required step="0.01" min="0.01" placeholder="0.00" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Notes <span class="text-gray-500">(Optional)</span></label>
+                            <input type="text" id="expense-note" placeholder="e.g., Confirmation #4920, Due by 15th" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                        </div>
+                        <button type="submit" class="w-full robinhood-bg-green text-[#040d14] font-bold py-3 rounded-xl transition duration-150 text-sm tracking-wide mt-2">Add Expense</button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Visualization Wheel Column -->
+            <div class="space-y-6">
+                <section class="card-dark p-6 rounded-2xl shadow-xl flex flex-col items-center justify-center min-h-[320px]">
+                    <div class="w-full max-w-[240px] relative">
+                        <canvas id="expense-chart"></canvas>
+                    </div>
+                    <div id="chart-fallback" class="text-sm text-gray-500 text-center mt-4">No data logged yet.</div>
+                    
+                    <!-- Simple Clean Inline Legend Container -->
+                    <div id="chart-legend" class="w-full mt-6 grid grid-cols-2 gap-2 text-xs text-gray-400 max-h-[120px] overflow-y-auto pr-1"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Sorted Expense List -->
+        <section class="card-dark p-6 rounded-2xl shadow-xl">
+            <h2 class="text-lg font-bold mb-4 text-white flex items-center justify-between">
+                <span>Itemized Breakdown</span>
+                <span class="text-xs font-normal text-gray-400 tracking-wide">Click amount or note to edit • Auto Cloud Synced</span>
+            </h2>
+            
+            <div id="list-fallback" class="text-sm text-gray-500 text-center py-6">No items registered this month.</div>
+            
+            <div id="expense-list-container" class="divide-y divide-gray-800 hidden"></div>
+        </section>
+
+    </main>
+
+    <script type="module">
+        // High-reliability API baseline that works beautifully across hosted domains
+        const CLOUD_API_BASE = 'https://api.restful-api.dev/objects';
+
+        // State Core Engine
+        let syncKey = localStorage.getItem('ro_cloud_sync_key') || null;
+        let expenses = JSON.parse(localStorage.getItem('ro_pure_local_expenses')) || [];
+        let chartInstance = null;
+
+        const dynamicColors = ['#00c805', '#ff5000', '#ffb700', '#0094ff', '#9d4edd', '#e63946', '#00f5d4', '#ff007f'];
+
+        const expenseForm = document.getElementById('expense-form');
+        const totalAmountDisplay = document.getElementById('total-amount');
+        const chartLegend = document.getElementById('chart-legend');
+        const expenseListContainer = document.getElementById('expense-list-container');
+        const listFallback = document.getElementById('list-fallback');
+        const syncKeyInput = document.getElementById('sync-key-input');
+        const connectBtn = document.getElementById('connect-btn');
+        const showKeyBtn = document.getElementById('show-key-btn');
+
+        // Launch Application Frame
+        initCloudSession();
+
+        async function initCloudSession() {
+            if (!syncKey) {
+                try {
+                    const res = await fetch(CLOUD_API_BASE, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            name: "Tiiny Monthly Expense Bucket",
+                            data: { expenses: expenses }
+                        })
+                    });
+                    
+                    if (!res.ok) throw new Error("Sync engine dropped connection packet");
+                    
+                    const responseData = await res.json();
+                    if (responseData && responseData.id) {
+                        syncKey = responseData.id;
+                        localStorage.setItem('ro_cloud_sync_key', syncKey);
+                    }
+                } catch (e) {
+                    console.error("Cloud generation handshake failed:", e);
+                }
+            } else {
+                await pullFromCloud();
+            }
+            updateAppUI();
+            
+            // Background polling loop configured to 10 seconds to align remote view states
+            if (syncKey) setInterval(pullFromCloud, 10000);
+        }
+
+        // Handle Log Submissions
+        expenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const desc = document.getElementById('expense-desc').value.trim();
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const note = document.getElementById('expense-note').value.trim();
+
+            expenses.push({ id: Date.now(), desc, amount, note });
+            
+            expenseForm.reset();
+            updateAppUI();
+            await pushToCloud();
+        });
+
+        // Sync Linking Module
+        connectBtn.addEventListener('click', async () => {
+            const inputKey = syncKeyInput.value.trim();
+            if (!inputKey) return alert("Please supply a valid device key payload.");
+
+            if (confirm("Link to this cloud profile? Your current local view will be overwritten by the cloud's data.")) {
+                try {
+                    const res = await fetch(`${CLOUD_API_BASE}/${inputKey}`);
+                    if (res.ok) {
+                        const responseData = await res.json();
+                        if (responseData && responseData.data && responseData.data.expenses) {
+                            syncKey = inputKey;
+                            localStorage.setItem('ro_cloud_sync_key', syncKey);
+                            expenses = responseData.data.expenses;
+                            updateAppUI();
+                            syncKeyInput.value = '';
+                            alert("Devices linked and verified!");
+                        }
+                    } else {
+                        alert("Cloud profile token matching failed.");
+                    }
+                } catch (err) {
+                    alert("Error negotiating device sync handshake.");
+                }
+            }
+        });
+
+        showKeyBtn.addEventListener('click', () => {
+            if (!syncKey) return alert("Cloud engine is initializing or blocked by local script extensions.");
+            prompt("Copy this Sync Key and paste it into your secondary device to match profiles:", syncKey);
+        });
+
+        window.deleteExpense = async function(id) {
+            expenses = expenses.filter(exp => exp.id !== id);
+            updateAppUI();
+            await pushToCloud();
+        }
+
+        window.handleAmountEdit = async function(element, id) {
+            const target = expenses.find(exp => exp.id === id);
+            if (!target) return;
+            const rawText = element.textContent.replace(/[$,]/g, '').trim();
+            let parsed = parseFloat(rawText);
+            if (isNaN(parsed) || parsed < 0) parsed = target.amount;
+
+            if (target.amount !== parsed) {
+                target.amount = parsed;
+                updateAppUI();
+                await pushToCloud();
+            } else {
+                element.textContent = '$' + target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            }
+        }
+
+        window.handleNoteEdit = async function(element, id) {
+            const target = expenses.find(exp => exp.id === id);
+            if (!target) return;
+            const newNote = element.textContent.trim();
+            if (target.note !== newNote) {
+                target.note = newNote;
+                localStorage.setItem('ro_pure_local_expenses', JSON.stringify(expenses));
+                await pushToCloud();
+            }
+        }
+
+        // Cloud IO Pipelines
+        async function pushToCloud() {
+            if (!syncKey) return;
+            try {
+                await fetch(`${CLOUD_API_BASE}/${syncKey}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: "Tiiny Monthly Expense Bucket",
+                        data: { expenses: expenses }
+                    })
+                });
+            } catch (e) { console.error("Cloud push sync error", e); }
+        }
+
+        async function pullFromCloud() {
+            if (!syncKey) return;
+            try {
+                const res = await fetch(`${CLOUD_API_BASE}/${syncKey}`);
+                if (res.ok) {
+                    const responseData = await res.json();
+                    if (responseData && responseData.data && responseData.data.expenses) {
+                        if (JSON.stringify(expenses) !== JSON.stringify(responseData.data.expenses)) {
+                            expenses = responseData.data.expenses;
+                            updateAppUI();
+                        }
+                    }
+                }
+            } catch (e) { console.error("Cloud pull synchronization error", e); }
+        }
+
+        // Client View Rendering Engines
+        function updateAppUI() {
+            localStorage.setItem('ro_pure_local_expenses', JSON.stringify(expenses));
+            let total = 0;
+            expenses.forEach(exp => total += exp.amount);
+            totalAmountDisplay.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            updateChart(total);
+            renderSortedList();
+        }
+
+        function renderSortedList() {
+            if (expenses.length === 0) {
+                listFallback.classList.remove('hidden');
+                expenseListContainer.classList.add('hidden');
+                return;
+            }
+            listFallback.classList.add('hidden');
+            expenseListContainer.classList.remove('hidden');
+
+            const sorted = [...expenses].sort((a, b) => b.amount - a.amount);
+            expenseListContainer.innerHTML = sorted.map(item => {
+                const origIdx = expenses.findIndex(e => e.id === item.id);
+                const color = dynamicColors[origIdx % dynamicColors.length] || '#4b5563';
+                return `
+                    <div class="flex items-center justify-between py-3.5 group hover:bg-[#12232a] px-2 rounded-xl transition-colors">
+                        <div class="flex items-center gap-3 truncate pr-4 min-w-0 flex-grow">
+                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1 self-start" style="background-color: ${color}"></span>
+                            <div class="truncate flex flex-col">
+                                <span class="font-medium text-sm text-gray-200 truncate">${escapeHtml(item.desc)}</span>
+                                <span contenteditable="true" onblur="handleNoteEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="text-xs text-gray-500 italic truncate max-w-md focus:text-gray-300 focus:outline-none focus:bg-[#172a32] rounded px-1 mt-0.5">${escapeHtml(item.note || 'Add a note...')}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 flex-shrink-0 ml-2">
+                            <span contenteditable="true" onblur="handleAmountEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="font-mono text-sm font-semibold text-white px-2 py-0.5 rounded border border-transparent hover:border-gray-700 bg-transparent hover:bg-[#172a32] focus:bg-[#172a32] focus:border-[#00c805] focus:outline-none transition-all cursor-edit">$${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <button onclick="deleteExpense(${item.id})" class="text-gray-500 hover:text-red-400 p-1 rounded transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateChart(grandTotal) {
+            const fallbackEl = document.getElementById('chart-fallback');
+            const canvasEl = document.getElementById('expense-chart');
+            if (expenses.length === 0) {
+                fallbackEl.classList.remove('hidden');
+                canvasEl.classList.add('hidden');
+                chartLegend.innerHTML = '';
+                if (chartInstance) chartInstance.destroy();
+                return;
+            }
+            fallbackEl.classList.add('hidden');
+            canvasEl.classList.remove('hidden');
+            const labels = expenses.map(e => e.desc);
+            const dataValues = expenses.map(e => e.amount);
+            const colors = expenses.map((_, index) => dynamicColors[index % dynamicColors.length]);
+
+            chartLegend.innerHTML = '';
+            expenses.forEach((e, idx) => {
+                const itemPct = ((e.amount / grandTotal) * 100).toFixed(0);
+                chartLegend.innerHTML += `<div class="flex items-center gap-2 truncate"><span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${colors[idx]}"></span><span class="truncate text-gray-300">${escapeHtml(e.desc)}</span><span class="text-gray-500 font-mono text-[10px] ml-auto">${itemPct}%</span></div>`;
+            });
+
+            if (chartInstance) {
+                chartInstance.data.labels = labels;
+                chartInstance.data.datasets[0].data = dataValues;
+                chartInstance.data.datasets[0].backgroundColor = colors;
+                chartInstance.update();
+            } else {
+                chartInstance = new Chart(canvasEl.getContext('2d'), {
+                    type: 'pie',
+                    data: { labels: labels, datasets: [{ data: dataValues, backgroundColor: colors, borderWidth: 2, borderColor: '#0e1e24', hoverOffset: 6 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+        }
+
+        // Sanitization safety helper
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
