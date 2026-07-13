@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Expense Tracker</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for the visual breakdown -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #040d14; }
@@ -21,138 +19,110 @@
 
     <!-- DASHBOARD HEADER -->
     <header class="border-b border-gray-800 bg-[#040d14] sticky top-0 z-40 backdrop-blur-md bg-opacity-80">
-        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex justify-between items-center">
             <div>
                 <h1 class="text-sm font-semibold tracking-wider text-gray-400 uppercase">Monthly Expenses</h1>
                 <div class="text-4xl font-bold tracking-tight mt-1">$<span id="total-amount">0.00</span></div>
             </div>
-            
-            <!-- Cloud Sync Control Panel -->
-            <div class="flex flex-col items-end gap-1 w-full sm:w-auto">
-                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                    <input type="text" id="sync-key-input" placeholder="Paste Sync Key to Link Device" class="bg-[#172a32] border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00c805] w-48 font-mono">
-                    <button id="connect-btn" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition border border-gray-700">Link</button>
-                </div>
-                <button id="show-key-btn" class="text-[10px] text-gray-500 hover:text-gray-300 underline tracking-wide">
-                    Reveal My Device Cloud Sync Key
-                </button>
+            <div class="text-xs text-gray-500 bg-gray-900/50 px-3 py-1.5 rounded-lg border border-gray-800 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[#00c805] animate-pulse"></span>
+                Cloud Active
             </div>
         </div>
     </header>
 
     <!-- CONTENT BODY -->
     <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
-        
-        <!-- Top Row: Visual Chart (Prioritizes top visual space on mobile viewports) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            
-            <!-- Desktop Only Form Block / Hidden completely on Mobile viewports -->
+            <!-- Desktop Form -->
             <div class="hidden md:block md:col-span-1 space-y-6">
                 <section class="card-dark p-5 rounded-2xl shadow-xl">
                     <h2 class="text-base font-bold mb-4 text-white">Log Expense</h2>
                     <form id="desktop-expense-form" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">Description / Item</label>
-                            <input type="text" id="d-expense-desc" required placeholder="e.g., Electric bill, Rent" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Description</label>
+                            <input type="text" id="d-expense-desc" required placeholder="e.g., Electric bill" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00c805]">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-400 mb-1">Amount ($)</label>
-                            <input type="number" id="d-expense-amount" required step="0.01" min="0.01" placeholder="0.00" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                            <input type="number" id="d-expense-amount" required step="0.01" min="0.01" placeholder="0.00" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00c805]">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-400 mb-1">Notes <span class="text-gray-500">(Optional)</span></label>
-                            <input type="text" id="d-expense-note" placeholder="e.g., Confirmation code" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Notes</label>
+                            <input type="text" id="d-expense-note" placeholder="Optional" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00c805]">
                         </div>
-                        <button type="submit" class="w-full robinhood-bg-green text-[#040d14] font-bold py-2.5 rounded-xl transition duration-150 text-sm tracking-wide mt-2">Add Expense</button>
+                        <button type="submit" class="w-full robinhood-bg-green text-[#040d14] font-bold py-2.5 rounded-xl transition text-sm tracking-wide mt-2">Add Expense</button>
                     </form>
                 </section>
             </div>
 
-            <!-- Visualization Wheel Column (Always sits on top when opened on mobile devices) -->
+            <!-- Chart -->
             <div class="col-span-1 md:col-span-2 space-y-6">
                 <section class="card-dark p-6 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-center gap-6 min-h-[220px]">
                     <div class="w-full max-w-[180px] relative flex-shrink-0">
                         <canvas id="expense-chart"></canvas>
                     </div>
                     <div id="chart-fallback" class="text-sm text-gray-500 text-center py-8 hidden w-full">No data logged yet.</div>
-                    
-                    <!-- Clean Inline Legend Container -->
                     <div id="chart-legend" class="w-full grid grid-cols-2 gap-2 text-xs text-gray-400 max-h-[150px] overflow-y-auto pr-1"></div>
                 </section>
             </div>
         </div>
 
-        <!-- Bottom Row: Sorted Expense List -->
+        <!-- Expense List -->
         <section class="card-dark p-6 rounded-2xl shadow-xl">
             <h2 class="text-base font-bold mb-4 text-white flex items-center justify-between">
                 <span>Itemized Breakdown</span>
-                <span class="text-[10px] sm:text-xs font-normal text-gray-400 tracking-wide">Tap amount or note to edit</span>
+                <span class="text-xs font-normal text-gray-400">Tap to edit notes/amounts</span>
             </h2>
-            
             <div id="list-fallback" class="text-sm text-gray-500 text-center py-6">No items registered this month.</div>
-            
             <div id="expense-list-container" class="divide-y divide-gray-800 hidden"></div>
         </section>
-
     </main>
 
-    <!-- FLOATING ACTION BUTTON (Mobile Only "+") -->
-    <button id="mobile-fab" class="md:hidden fixed bottom-6 right-6 w-14 h-14 robinhood-bg-green text-[#040d14] rounded-full flex items-center justify-center shadow-2xl transition active:scale-95 z-50">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-        </svg>
+    <!-- Mobile FAB -->
+    <button id="mobile-fab" class="md:hidden fixed bottom-6 right-6 w-14 h-14 robinhood-bg-green text-[#040d14] rounded-full flex items-center justify-center shadow-2xl z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
     </button>
 
-    <!-- MOBILE MODAL BOTTOM SHEET OVERLAY -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 z-50 flex items-end sm:items-center sm:justify-center">
-        <div id="modal-container" class="w-full sm:max-w-md bg-[#0e1e24] border-t sm:border border-gray-800 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl transform translate-y-full sm:translate-y-4 transition-transform duration-300 max-h-[90vh] overflow-y-auto">
+    <!-- Mobile Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 z-50 flex items-end">
+        <div id="modal-container" class="w-full bg-[#0e1e24] border-t border-gray-800 rounded-t-3xl p-6 transform translate-y-full transition-transform duration-300">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-white">Log Expense</h3>
-                <button id="close-modal-btn" class="p-1 text-gray-400 hover:text-white transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <button id="close-modal-btn" class="p-1 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
-            
             <form id="mobile-expense-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Description / Item</label>
-                    <input type="text" id="m-expense-desc" required placeholder="e.g., Electric bill, Rent, Groceries" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Description</label>
+                    <input type="text" id="m-expense-desc" required class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00c805]">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">Amount ($)</label>
-                    <input type="number" id="m-expense-amount" required step="0.01" min="0.01" placeholder="0.00" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                    <input type="number" id="m-expense-amount" required step="0.01" min="0.01" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00c805]">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Notes <span class="text-gray-500">(Optional)</span></label>
-                    <input type="text" id="m-expense-note" placeholder="e.g., Confirmation #4920, Due by 15th" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#00c805] text-sm">
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Notes</label>
+                    <input type="text" id="m-expense-note" class="w-full bg-[#172a32] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00c805]">
                 </div>
-                <button type="submit" class="w-full robinhood-bg-green text-[#040d14] font-bold py-3.5 rounded-xl transition duration-150 text-sm tracking-wide mt-2">Add Expense</button>
+                <button type="submit" class="w-full robinhood-bg-green text-[#040d14] font-bold py-3.5 rounded-xl transition text-sm tracking-wide mt-2">Add Expense</button>
             </form>
         </div>
     </div>
 
     <script type="module">
-        // Standard high-reliability data stream API engine
-        const CLOUD_API_BASE = 'https://api.restful-api.dev/objects';
+        // Change "CHOOSE_A_CUSTOM_PASSWORD" below to any secret word you want.
+        // As long as your second device uses the exact same code and password, they will sync!
+        const CUSTOM_SYNC_PASSWORD = 'Mo03expensetracker'; 
+        const CLOUD_API_URL = `https://kvdb.io/66qM6863G9L2D6e9fN4XU9/${CUSTOM_SYNC_PASSWORD}`;
 
-        // State Core Engine
-        let syncKey = localStorage.getItem('ro_cloud_sync_key') || null;
         let expenses = JSON.parse(localStorage.getItem('ro_pure_local_expenses')) || [];
         let chartInstance = null;
-
         const dynamicColors = ['#00c805', '#ff5000', '#ffb700', '#0094ff', '#9d4edd', '#e63946', '#00f5d4', '#ff007f'];
 
         const totalAmountDisplay = document.getElementById('total-amount');
         const chartLegend = document.getElementById('chart-legend');
         const expenseListContainer = document.getElementById('expense-list-container');
         const listFallback = document.getElementById('list-fallback');
-        const syncKeyInput = document.getElementById('sync-key-input');
-        const connectBtn = document.getElementById('connect-btn');
-        const showKeyBtn = document.getElementById('show-key-btn');
-
-        // Modal Elements
         const mobileFab = document.getElementById('mobile-fab');
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContainer = document.getElementById('modal-container');
@@ -160,44 +130,18 @@
         const mobileForm = document.getElementById('mobile-expense-form');
         const desktopForm = document.getElementById('desktop-expense-form');
 
-        // Launch Application Frame
         initCloudSession();
 
         async function initCloudSession() {
-            if (!syncKey) {
-                try {
-                    const res = await fetch(CLOUD_API_BASE, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: "GitHub Pages Expense Bucket",
-                            data: { expenses: expenses }
-                        })
-                    });
-                    
-                    if (!res.ok) throw new Error("Sync engine connection failed");
-                    
-                    const responseData = await res.json();
-                    if (responseData && responseData.id) {
-                        syncKey = responseData.id;
-                        localStorage.setItem('ro_cloud_sync_key', syncKey);
-                    }
-                } catch (e) {
-                    console.error("Cloud generation handshake failed:", e);
-                }
-            } else {
-                await pullFromCloud();
-            }
+            await pullFromCloud();
             updateAppUI();
-            
-            if (syncKey) setInterval(pullFromCloud, 10000);
+            setInterval(pullFromCloud, 7000); // Check for updates every 7 seconds
         }
 
-        // Modal Control Toggle Logic
         function openModal() {
             modalOverlay.classList.remove('pointer-events-none');
             modalOverlay.classList.add('opacity-100');
-            modalContainer.classList.remove('translate-y-full', 'sm:translate-y-4');
+            modalContainer.classList.remove('translate-y-full');
             modalContainer.classList.add('translate-y-0');
         }
 
@@ -205,16 +149,13 @@
             modalOverlay.classList.add('pointer-events-none');
             modalOverlay.classList.remove('opacity-100');
             modalContainer.classList.remove('translate-y-0');
-            modalContainer.classList.add('translate-y-full', 'sm:translate-y-4');
+            modalContainer.classList.add('translate-y-full');
         }
 
         mobileFab.addEventListener('click', openModal);
         closeModalBtn.addEventListener('click', closeModal);
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModal();
-        });
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
-        // Universal Expense Submission Processor
         async function processNewExpense(desc, amount, note) {
             expenses.push({ id: Date.now(), desc, amount, note });
             updateAppUI();
@@ -222,7 +163,6 @@
             closeModal();
         }
 
-        // Mobile Form Submission
         mobileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = document.getElementById('m-expense-desc').value.trim();
@@ -232,7 +172,6 @@
             await processNewExpense(desc, amount, note);
         });
 
-        // Desktop Form Submission
         desktopForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const desc = document.getElementById('d-expense-desc').value.trim();
@@ -240,38 +179,6 @@
             const note = document.getElementById('d-expense-note').value.trim();
             desktopForm.reset();
             await processNewExpense(desc, amount, note);
-        });
-
-        // Sync Linking Module
-        connectBtn.addEventListener('click', async () => {
-            const inputKey = syncKeyInput.value.trim();
-            if (!inputKey) return alert("Please supply a valid device key payload.");
-
-            if (confirm("Link to this cloud profile? Your current local view will be overwritten by the cloud's data.")) {
-                try {
-                    const res = await fetch(`${CLOUD_API_BASE}/${inputKey}`);
-                    if (res.ok) {
-                        const responseData = await res.json();
-                        if (responseData && responseData.data && responseData.data.expenses) {
-                            syncKey = inputKey;
-                            localStorage.setItem('ro_cloud_sync_key', syncKey);
-                            expenses = responseData.data.expenses;
-                            updateAppUI();
-                            syncKeyInput.value = '';
-                            alert("Devices linked and verified!");
-                        }
-                    } else {
-                        alert("Cloud profile token matching failed.");
-                    }
-                } catch (err) {
-                    alert("Error negotiating device sync handshake.");
-                }
-            }
-        });
-
-        showKeyBtn.addEventListener('click', () => {
-            if (!syncKey) return alert("Cloud engine is initializing or blocked.");
-            prompt("Copy this Sync Key and paste it into your secondary device to match profiles:", syncKey);
         });
 
         window.deleteExpense = async function(id) {
@@ -307,38 +214,28 @@
             }
         }
 
-        // Cloud IO Pipelines
         async function pushToCloud() {
-            if (!syncKey) return;
             try {
-                await fetch(`${CLOUD_API_BASE}/${syncKey}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: "GitHub Pages Expense Bucket",
-                        data: { expenses: expenses }
-                    })
+                await fetch(CLOUD_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(expenses)
                 });
-            } catch (e) { console.error("Cloud push sync error", e); }
+            } catch (e) { console.error("Cloud error", e); }
         }
 
         async function pullFromCloud() {
-            if (!syncKey) return;
             try {
-                const res = await fetch(`${CLOUD_API_BASE}/${syncKey}`);
+                const res = await fetch(CLOUD_API_URL);
                 if (res.ok) {
-                    const responseData = await res.json();
-                    if (responseData && responseData.data && responseData.data.expenses) {
-                        if (JSON.stringify(expenses) !== JSON.stringify(responseData.data.expenses)) {
-                            expenses = responseData.data.expenses;
-                            updateAppUI();
-                        }
+                    const cloudData = await res.json();
+                    if (Array.isArray(cloudData) && JSON.stringify(expenses) !== JSON.stringify(cloudData)) {
+                        expenses = cloudData;
+                        updateAppUI();
                     }
                 }
-            } catch (e) { console.error("Cloud pull synchronization error", e); }
+            } catch (e) { console.error("Cloud pull error", e); }
         }
 
-        // Client View Rendering Engines
         function updateAppUI() {
             localStorage.setItem('ro_pure_local_expenses', JSON.stringify(expenses));
             let total = 0;
@@ -362,19 +259,17 @@
                 const origIdx = expenses.findIndex(e => e.id === item.id);
                 const color = dynamicColors[origIdx % dynamicColors.length] || '#4b5563';
                 return `
-                    <div class="flex items-center justify-between py-3.5 group hover:bg-[#12232a] px-2 rounded-xl transition-colors">
+                    <div class="flex items-center justify-between py-3.5 px-2 rounded-xl">
                         <div class="flex items-center gap-3 truncate pr-4 min-w-0 flex-grow">
                             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1 self-start" style="background-color: ${color}"></span>
                             <div class="truncate flex flex-col">
                                 <span class="font-medium text-sm text-gray-200 truncate">${escapeHtml(item.desc)}</span>
-                                <span contenteditable="true" onblur="handleNoteEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="text-xs text-gray-500 italic truncate max-w-md focus:text-gray-300 focus:outline-none focus:bg-[#172a32] rounded px-1 mt-0.5">${escapeHtml(item.note || 'Add a note...')}</span>
+                                <span contenteditable="true" onblur="handleNoteEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="text-xs text-gray-500 italic truncate focus:text-gray-300 focus:outline-none rounded mt-0.5">${escapeHtml(item.note || 'Add a note...')}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-4 flex-shrink-0 ml-2">
-                            <span contenteditable="true" onblur="handleAmountEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="font-mono text-sm font-semibold text-white px-2 py-0.5 rounded border border-transparent hover:border-gray-700 bg-transparent hover:bg-[#172a32] focus:bg-[#172a32] focus:border-[#00c805] focus:outline-none transition-all cursor-edit">$${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            <button onclick="deleteExpense(${item.id})" class="text-gray-500 hover:text-red-400 p-1 rounded transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
+                            <span contenteditable="true" onblur="handleAmountEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="font-mono text-sm font-semibold text-white px-2 py-0.5 rounded bg-[#172a32] focus:outline-none">$${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <button onclick="deleteExpense(${item.id})" class="text-gray-500 hover:text-red-400 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
                     </div>
                 `;
@@ -411,7 +306,7 @@
             } else {
                 chartInstance = new Chart(canvasEl.getContext('2d'), {
                     type: 'pie',
-                    data: { labels: labels, datasets: [{ data: dataValues, backgroundColor: colors, borderWidth: 2, borderColor: '#0e1e24', hoverOffset: 6 }] },
+                    data: { labels: labels, datasets: [{ data: dataValues, backgroundColor: colors, borderWidth: 2, borderColor: '#0e1e24' }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
             }
