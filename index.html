@@ -22,7 +22,6 @@
             <!-- Header Status Area -->
             <header class="flex items-center justify-between mb-8">
                 <div>
-                    <!-- Updated header text to Total Monthly Expenses -->
                     <h1 class="text-xs uppercase tracking-widest text-gray-500 font-bold">Total Monthly Expenses</h1>
                     <div class="flex items-baseline gap-1 mt-1 text-white">
                         <span class="text-2xl font-light text-gray-400">$</span>
@@ -107,6 +106,40 @@
         </div>
     </div>
 
+    <!-- VIEW & EDIT EXPENSE DRAWER -->
+    <div id="view-modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 pointer-events-none opacity-0 transition-opacity duration-200 flex items-end sm:items-center sm:justify-center p-0 sm:p-4">
+        <div id="view-modal-container" class="w-full sm:max-w-md bg-[#12242c] border border-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 transition-transform duration-200 transform translate-y-full sm:translate-y-4">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-base font-semibold text-white">Expense Details</h3>
+                <button id="close-view-modal-btn" class="text-gray-500 hover:text-white p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            
+            <form id="view-expense-form" class="space-y-4">
+                <input type="hidden" id="edit-expense-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Description</label>
+                    <input type="text" id="edit-expense-desc" required class="w-full bg-[#172a32] border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Amount ($)</label>
+                    <input type="number" step="0.01" min="0.01" id="edit-expense-amount" required class="w-full bg-[#172a32] border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">Note Details</label>
+                    <textarea id="edit-expense-note" rows="4" placeholder="No note detail added yet..." class="w-full bg-[#172a32] border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button id="delete-view-btn" type="button" class="flex-1 bg-red-950/40 hover:bg-red-900/60 border border-red-900 text-red-200 font-semibold text-sm py-3 rounded-xl transition-colors">
+                        Delete Outlay
+                    </button>
+                    <button type="submit" class="flex-1 bg-[#00c805] hover:bg-emerald-500 text-black font-semibold text-sm py-3 rounded-xl transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- GITHUB SYNC SETTINGS DRAWER -->
     <div id="settings-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 pointer-events-none opacity-0 transition-opacity duration-200 flex items-end sm:items-center sm:justify-center p-0 sm:p-4">
         <div id="settings-container" class="w-full sm:max-w-md bg-[#12242c] border border-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 transition-transform duration-200 transform translate-y-full sm:translate-y-4">
@@ -160,6 +193,17 @@
         const modalContainer = document.getElementById('modal-container');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const globalForm = document.getElementById('global-expense-form');
+
+        // View/Edit Modal Elements
+        const viewModalOverlay = document.getElementById('view-modal-overlay');
+        const viewModalContainer = document.getElementById('view-modal-container');
+        const closeViewModalBtn = document.getElementById('close-view-modal-btn');
+        const viewExpenseForm = document.getElementById('view-expense-form');
+        const editExpenseId = document.getElementById('edit-expense-id');
+        const editExpenseDesc = document.getElementById('edit-expense-desc');
+        const editExpenseAmount = document.getElementById('edit-expense-amount');
+        const editExpenseNote = document.getElementById('edit-expense-note');
+        const deleteViewBtn = document.getElementById('delete-view-btn');
         
         const syncDot = document.getElementById('sync-dot');
         const syncText = document.getElementById('sync-text');
@@ -217,6 +261,29 @@
             modalContainer.classList.add('translate-y-full', 'sm:translate-y-4');
         }
 
+        // Open View Details Drawer
+        window.openViewModal = function(id) {
+            const target = expenses.find(exp => exp.id === id);
+            if (!target) return;
+
+            editExpenseId.value = target.id;
+            editExpenseDesc.value = target.desc;
+            editExpenseAmount.value = target.amount;
+            editExpenseNote.value = target.note || '';
+
+            viewModalOverlay.classList.remove('pointer-events-none');
+            viewModalOverlay.classList.add('opacity-100');
+            viewModalContainer.classList.remove('translate-y-full', 'sm:translate-y-4');
+            viewModalContainer.classList.add('translate-y-0');
+        }
+
+        function closeViewModal() {
+            viewModalOverlay.classList.add('pointer-events-none');
+            viewModalOverlay.classList.remove('opacity-100');
+            viewModalContainer.classList.remove('translate-y-0');
+            viewModalContainer.classList.add('translate-y-full', 'sm:translate-y-4');
+        }
+
         function openSettingsModal() {
             ghTokenInput.value = ghSettings.token || '';
             ghGistIdInput.value = ghSettings.gistId || '';
@@ -238,6 +305,9 @@
         globalFab.addEventListener('click', openModal);
         closeModalBtn.addEventListener('click', closeModal);
         modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+        closeViewModalBtn.addEventListener('click', closeViewModal);
+        viewModalOverlay.addEventListener('click', (e) => { if (e.target === viewModalOverlay) closeViewModal(); });
 
         syncBadge.addEventListener('click', () => {
             if (ghSettings.token && ghSettings.gistId) pullFromCloud();
@@ -306,6 +376,39 @@
             closeModal();
         });
 
+        // Save Details Form Submission handler
+        viewExpenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = parseInt(editExpenseId.value);
+            const target = expenses.find(exp => exp.id === id);
+            if (!target) return;
+
+            const updatedDesc = editExpenseDesc.value.trim();
+            const updatedAmount = parseFloat(editExpenseAmount.value);
+            const updatedNote = editExpenseNote.value.trim();
+
+            if (!updatedDesc || isNaN(updatedAmount) || updatedAmount <= 0) return;
+
+            target.desc = updatedDesc;
+            target.amount = updatedAmount;
+            target.note = updatedNote;
+
+            updateAppUI();
+            localSyncChannel.postMessage(expenses);
+            await pushToCloud();
+            closeViewModal();
+        });
+
+        // Dedicated delete button inside View/Edit Drawer
+        deleteViewBtn.addEventListener('click', async () => {
+            const id = parseInt(editExpenseId.value);
+            expenses = expenses.filter(exp => exp.id !== id);
+            updateAppUI();
+            localSyncChannel.postMessage(expenses);
+            await pushToCloud();
+            closeViewModal();
+        });
+
         window.deleteExpense = async function(id) {
             expenses = expenses.filter(exp => exp.id !== id);
             updateAppUI();
@@ -327,18 +430,6 @@
                 await pushToCloud();
             } else {
                 element.textContent = '$' + target.amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
-            }
-        }
-
-        window.handleNoteEdit = async function(element, id) {
-            const target = expenses.find(exp => exp.id === id);
-            if (!target) return;
-            const newNote = element.textContent.trim();
-            if (target.note !== newNote) {
-                target.note = newNote;
-                updateAppUI();
-                localSyncChannel.postMessage(expenses);
-                await pushToCloud();
             }
         }
 
@@ -416,15 +507,15 @@
             expenseListContainer.innerHTML = sorted.map((item, idx) => {
                 const color = dynamicColors[idx % dynamicColors.length] || '#4b5563';
                 return `
-                    <div class="flex items-center justify-between py-3.5 px-2 rounded-xl">
+                    <div class="flex items-center justify-between py-3.5 px-2 rounded-xl hover:bg-[#12242c]/40 transition duration-150 cursor-pointer" onclick="openViewModal(${item.id})">
                         <div class="flex items-center gap-3 truncate pr-4 min-w-0 flex-grow">
                             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1 self-start" style="background-color: ${color}"></span>
                             <div class="truncate flex flex-col">
                                 <span class="font-medium text-sm text-gray-200 truncate">${escapeHtml(item.desc)}</span>
-                                <span contenteditable="true" onblur="handleNoteEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="text-xs text-gray-500 italic truncate focus:text-gray-300 focus:outline-none rounded mt-0.5">${item.note ? escapeHtml(item.note) : 'Add a note...'}</span>
+                                <span class="text-xs text-gray-500 italic truncate mt-0.5">${item.note ? escapeHtml(item.note) : 'Click to add a note...'}</span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-4 flex-shrink-0 ml-2">
+                        <div class="flex items-center gap-4 flex-shrink-0 ml-2" onclick="event.stopPropagation()">
                             <span contenteditable="true" onblur="handleAmountEdit(this, ${item.id})" onkeydown="if(event.key === 'Enter') { event.preventDefault(); this.blur(); }" class="font-mono text-sm font-semibold text-white px-2 py-0.5 rounded bg-[#172a32] focus:outline-none">$${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             <button onclick="deleteExpense(${item.id})" class="text-gray-500 hover:text-red-400 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
